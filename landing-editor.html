@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Landing Page Editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600&family=IBM+Plex+Sans:wght@400;600&family=Schibsted+Grotesk:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,600&family=Young+Serif&display=swap" rel="stylesheet">
 <style>
   :root { --bg:#f4f4f2; --fg:#1d1d1f; --muted:#6b6b70; --line:#dcdcd8; }
   * { box-sizing:border-box; }
@@ -71,13 +73,25 @@
   .el[data-id=nav], .el[data-id=price] { font-family:var(--ui-font, system-ui); }
   .el[data-id=nav] { word-spacing:14px; }
   .el[data-id=logo] { font-family:var(--head-font); font-weight:700; }
-  .el.image { container-type:size; }
-  #canvas[data-page=educational] .el[data-id^=feat] { background:#f6e8cf; border-radius:16px; padding:14px 16px; }
-  #canvas[data-page=product] .el[data-id^=feat] { text-align:center; border-top:1px solid #2c2c36; padding-top:12px; }
-  #canvas[data-page=business] .el[data-id^=feat] { border-left:3px solid #1f5fa8; padding-left:12px; }
-  .el.image .art { font-size:45cqmin; line-height:1; }  /* scales with the image box */
-  .el.image .bars { display:flex; align-items:flex-end; gap:10px; height:55%; }
-  .el.image .bars i { width:26px; background:#fff; opacity:.85; border-radius:4px 4px 0 0; }
+  .el.image svg { width:100%; height:100%; display:block; }
+  .ico { width:1.05em; height:1.05em; vertical-align:-0.15em; margin-right:.4em; }
+  .stars { color:var(--accent); margin-right:.35em; } .stars .ico { margin-right:1px; }
+  .el[data-id=badge] { color:var(--accent); font-family:var(--ui-font); font-weight:600; }
+  .el[data-id^=feat] b { font-family:var(--head-font); font-weight:var(--head-weight); font-size:1.15em; margin-bottom:6px; }
+  .el[data-id^=feat] { color:color-mix(in srgb, var(--page-fg) 78%, var(--page-bg)); }
+  .el[data-id^=feat] b { color:var(--page-fg); }
+  #canvas[data-page=educational] .el[data-id^=feat] { border-top:2px solid var(--accent); padding-top:12px; }
+  #canvas[data-page=product] .el[data-id^=feat] { text-align:center; border-top:1px solid #2e2f34; padding-top:14px; }
+  #canvas[data-page=product] .el[data-id^=feat] b { font-family:var(--ui-font); font-weight:600; font-size:1em; letter-spacing:.01em; }
+  #canvas[data-page=business] .el[data-id^=feat] { border-top:1px solid #1c2430; padding-top:12px; }
+  #canvas[data-page=product] .el.ghost { border-color:#4a4a4f; }
+  /* editor chrome: browser surfaces themed from the same neutrals */
+  ::selection { background:#cfe0ff; color:#0b1b33; }
+  button.ui:hover:not(:disabled), .bar select:hover:not(:disabled) { border-color:#b9b9b4; background:#fafaf8; }
+  button.ui.on:hover { background:#000; }
+  button.ui:focus-visible, select:focus-visible, input:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
+  .chev { width:10px; height:10px; margin-left:6px; vertical-align:0; }
+  aside { scrollbar-width:thin; scrollbar-color:#cfcfca transparent; }
 </style>
 </head>
 <body class="participant">
@@ -93,7 +107,7 @@
   <select id="addEl"></select>
   <span class="grow"></span>
   <div class="menu">
-    <button class="ui" id="menuBtn">Critic ▾</button>
+    <button class="ui" id="menuBtn" aria-haspopup="true">Critic<svg class="chev" viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
     <div class="drop" id="drop">
       <span class="lbl">Page type</span>
       <div class="seg" id="pages"></div>
@@ -124,12 +138,12 @@ const PAGES = {
     headline:'Learn Python in 30 days with a mentor who reviews your code', support:'Each day is a 20 minute lesson and a small project. A mentor reviews your code every week.',
     feats:[['Daily lessons','Short video lessons that fit around school or work.'],['Code review','A mentor reviews your code every week and explains what to fix.'],['Certificate','Finish the projects to earn a certificate for your résumé.']],
     price:'Free for 7 days, then $19/month',
-    extra:{ badge:'🗓 Next cohort starts Jan 12 · 14 seats left' } },
+    extra:{ get badge() { return ICON.cal + 'Next cohort starts Jan 12 · 14 seats left'; } } },
   product: { hue:260, logo:'Aero', cta:'Buy Aero', second:'Compare models', nav:'Shop Compare Reviews Support',
     headline:'Noise-cancelling headphones that last 40 hours', support:'Aero blocks up to 95% of background noise and folds flat for travel.',
     feats:[['Noise cancelling','Six microphones cancel outside noise before you hear it.'],['40-hour battery','A full charge lasts about a week of commuting.'],['Travel ready','Folds flat into a thin case that fits in a laptop bag.']],
     price:'$249, free shipping and 30-day returns',
-    extra:{ rating:'★★★★☆ 4.6 · 2,310 reviews' } },
+    extra:{ get rating() { return '<span class="stars">' + [1,1,1,1,0].map(ICON.star).join('') + '</span>4.6 · 2,310 reviews'; } } },
   business: { hue:210, logo:'Ledgerly', cta:'Start free trial', second:'Book a demo', nav:'Product Pricing Customers Login',
     headline:'Bookkeeping for small businesses, done in minutes a week', support:'Ledgerly connects to your bank, sorts each transaction, and prepares tax-ready reports.',
     feats:[['Bank sync','Transactions import every night from your bank and card accounts.'],['Auto-sorting','Each transaction gets a category that you approve with one click.'],['Tax-ready','Profit and loss and balance sheet reports stay up to date.']],
@@ -137,16 +151,48 @@ const PAGES = {
     extra:{ email:'Work email' } },
 };
 // Visual style per page type. Only the look changes; elements and planted problems stay parallel.
+// Each page type is its own small brand. Images are drawn SVG with real page content, not stock or emoji.
+const ART = {
+  business:`<svg viewBox="0 0 320 260" preserveAspectRatio="xMidYMid meet" style="font-family:'IBM Plex Sans',system-ui;font-variant-numeric:tabular-nums">
+    <rect x="2" y="2" width="316" height="256" rx="6" fill="#fff" stroke="#d8d4c8"/><rect x="2" y="250" width="316" height="8" rx="4" fill="#000" opacity=".03"/>
+    <text x="38" y="50" font-size="13" font-weight="600" fill="#1c2430">Profit and loss</text><text x="282" y="50" font-size="11" fill="#7d8590" text-anchor="end">March 2026</text>
+    <line x1="38" y1="62" x2="282" y2="62" stroke="#1c2430"/>
+    <g font-size="12" fill="#3b4552"><text x="38" y="86">Revenue</text><text x="282" y="86" text-anchor="end">18,420.00</text>
+    <text x="38" y="110">Cost of goods</text><text x="282" y="110" text-anchor="end">−6,310.00</text>
+    <text x="38" y="134">Payroll</text><text x="282" y="134" text-anchor="end">−5,200.00</text>
+    <text x="38" y="158">Software</text><text x="282" y="158" text-anchor="end">−412.50</text></g>
+    <line x1="38" y1="172" x2="282" y2="172" stroke="#d8d4c8"/>
+    <text x="38" y="196" font-size="13" font-weight="600" fill="#1c2430">Net profit</text><text x="282" y="196" font-size="13" font-weight="600" fill="#1f3a5f" text-anchor="end">6,497.50</text>
+    <path d="M40 220l5 5 9-10" fill="none" stroke="#2f7d5b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><text x="60" y="224" font-size="11" fill="#2f7d5b">Ready for tax filing</text></svg>`,
+  product:`<svg viewBox="0 0 400 340" preserveAspectRatio="xMidYMid meet">
+    <ellipse cx="200" cy="300" rx="120" ry="10" fill="#000" opacity=".35"/>
+    <path d="M112 196 C112 70 288 70 288 196" fill="none" stroke="#d9d6cf" stroke-width="12" stroke-linecap="round"/>
+    <path d="M120 186 C120 92 280 92 280 186" fill="none" stroke="#5a5a5e" stroke-width="3"/>
+    <rect x="84" y="172" width="64" height="112" rx="28" fill="#2b2c31" stroke="#d9d6cf" stroke-width="3"/>
+    <rect x="252" y="172" width="64" height="112" rx="28" fill="#2b2c31" stroke="#d9d6cf" stroke-width="3"/>
+    <rect x="140" y="194" width="14" height="68" rx="7" fill="#45464c"/><rect x="246" y="194" width="14" height="68" rx="7" fill="#45464c"/>
+    <circle cx="116" cy="200" r="4" fill="#ff8a3d"/></svg>`,
+  educational:`<svg viewBox="0 0 240 100" preserveAspectRatio="xMidYMid meet" style="font-family:ui-monospace,Menlo,monospace">
+    <rect x="4" y="4" width="232" height="92" rx="10" fill="#22302a"/>
+    <circle cx="20" cy="18" r="4" fill="#e36d5a"/><circle cx="34" cy="18" r="4" fill="#e8b649"/><circle cx="48" cy="18" r="4" fill="#5cb27e"/>
+    <text x="20" y="48" font-size="13" fill="#9fd6b3"><tspan fill="#f2c879">def</tspan> greet(name):</text>
+    <text x="20" y="70" font-size="13" fill="#e9e2d0">    <tspan fill="#f2c879">return</tspan> f"Hi, {name}"</text>
+    <rect x="20" y="78" width="7" height="13" fill="#9fd6b3"/></svg>`,
+};
+const ICON = {
+  cal:'<svg class="ico" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="11" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2 7h12M5 1.5v3M11 1.5v3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+  star:f => `<svg class="ico" viewBox="0 0 16 16"><path d="M8 1.5l2 4.2 4.6.6-3.4 3.2.9 4.6L8 11.8 3.9 14.1l.9-4.6L1.4 6.3 6 5.7z" fill="${f ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>`,
+};
 const THEME = {
-  educational: { bg:'#fdf6e9', fg:'#2b2a28', muted:'#a89f8f', dot:'#efe4d0', radius:'999px', btn:'#1f7a4d', flawBtn:'#9fd9b8',
-    head:'"Trebuchet MS", "Avenir Next Rounded", sans-serif', headWeight:700, body:'"Avenir Next", system-ui, sans-serif', ui:'"Avenir Next", system-ui',
-    img:'linear-gradient(135deg, #ffd59e, #f5a46b)', art:'<span class="art">🐍💻</span>' },
-  product: { bg:'#101014', fg:'#f2f2f5', muted:'#6c6c78', dot:'#24242c', radius:'3px', btn:'#b79cff', flawBtn:'#3a2f63',
-    head:'"Helvetica Neue", Helvetica, sans-serif', headWeight:300, headSpacing:'-0.02em', body:'"Helvetica Neue", Helvetica, sans-serif', ui:'"Helvetica Neue", Helvetica',
-    img:'radial-gradient(circle at 50% 40%, #4a3b85, #101014 70%)', art:'<span class="art">🎧</span>' },
-  business: { bg:'#ffffff', fg:'#1b2433', muted:'#9aa3b2', dot:'#e9edf2', radius:'6px', btn:'#1f5fa8', flawBtn:'#a9c4e6',
-    head:'Georgia, serif', headWeight:700, body:'Georgia, serif', ui:'system-ui',
-    img:'linear-gradient(160deg, #3b7dd8, #1f4f8f)', art:'<div class="bars"><i style="height:40%"></i><i style="height:65%"></i><i style="height:50%"></i><i style="height:85%"></i><i style="height:100%"></i></div>' },
+  educational: { bg:'#fdf6e9', fg:'#2b2a28', muted:'#9c927f', dot:'#efe3cc', radius:'999px', btn:'#1f7a4d', flawBtn:'#9fd9b8', accent:'#1f7a4d',
+    head:'"Young Serif", Georgia, serif', headWeight:400, body:'Figtree, system-ui, sans-serif', ui:'Figtree, system-ui',
+    img:'transparent', art:ART.educational },
+  product: { bg:'#16171a', fg:'#f1efe9', muted:'#77777a', dot:'#232428', radius:'2px', btn:'#ff8a3d', flawBtn:'#3d3430', accent:'#ff8a3d',
+    head:'"Schibsted Grotesk", system-ui, sans-serif', headWeight:500, headSpacing:'-0.025em', body:'"Schibsted Grotesk", system-ui, sans-serif', ui:'"Schibsted Grotesk", system-ui',
+    img:'#1e1f23', art:ART.product },
+  business: { bg:'#fbfaf6', fg:'#1c2430', muted:'#8b9199', dot:'#ebe8df', radius:'4px', btn:'#1f3a5f', flawBtn:'#b4c3d6', accent:'#1f3a5f',
+    head:'"Source Serif 4", Georgia, serif', headWeight:600, headSpacing:'-0.01em', body:'"IBM Plex Sans", system-ui, sans-serif', ui:'"IBM Plex Sans", system-ui',
+    img:'transparent', art:ART.business },
 };
 const TYPE = { logo:'text', nav:'text', headline:'text', support:'text', price:'text', feat1:'text', feat2:'text', feat3:'text', cta:'button', second:'button', image:'image',
   badge:'text', rating:'text', email:'input' };
@@ -289,7 +335,7 @@ function place(el, id) {
 function render() {
   const T = THEME[page]; loadKey(); canvas.dataset.page = page;
   for (const [k, v] of Object.entries({ '--page-bg':T.bg, '--page-fg':T.fg, '--muted-fg':T.muted, '--dot':T.dot, '--radius':T.radius,
-    '--head-font':T.head, '--head-weight':T.headWeight, '--head-spacing':T.headSpacing || '0', '--body-font':T.body, '--ui-font':T.ui })) canvas.style.setProperty(k, v);
+    '--accent':T.accent, '--head-font':T.head, '--head-weight':T.headWeight, '--head-spacing':T.headSpacing || '0', '--body-font':T.body, '--ui-font':T.ui })) canvas.style.setProperty(k, v);
   canvas.innerHTML = Object.entries(SECTIONS).map(([n, [t, b]]) =>
     `<div class="band" style="top:${t}px;height:${b - t}px"><span>${n}</span></div>`).join('');
   for (const id in L) {
@@ -517,7 +563,10 @@ function grade() {
 }
 
 
-render();
+// Load every page's fonts before the first grade, so each baseline is measured on the real text sizes.
+// ponytail: if the font CDN is blocked, the fallbacks render and the scores shift a little.
+Promise.allSettled(['Figtree', '600 1em Figtree', '1em "Young Serif"', '1em "Schibsted Grotesk"', '500 1em "Schibsted Grotesk"', '600 1em "Schibsted Grotesk"',
+  '600 1em "Source Serif 4"', '1em "IBM Plex Sans"', '600 1em "IBM Plex Sans"'].map(f => document.fonts.load(f.includes('1em') ? f : '1em ' + f))).then(render);
 </script>
 </body>
 </html>
