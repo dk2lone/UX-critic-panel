@@ -311,7 +311,9 @@ function content(id) {
 
 // ---- WCAG contrast ----
 function rgb(color) { const d = document.createElement('div'); d.style.color = color; document.body.append(d);
-  const v = getComputedStyle(d).color.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number); d.remove(); return v; }
+  // color-mix() computes to color(srgb r g b) with 0..1 channels, rgb() gives 0..255
+  const c = getComputedStyle(d).color, v = c.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number); d.remove();
+  return c.startsWith('color(') ? v.map(x => Math.round(x * 255)) : v; }
 const lum = c => c.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
 const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
 const labelFor = bg => ratio(rgb(bg), [255, 255, 255]) >= ratio(rgb(bg), [17, 17, 17]) ? '#fff' : '#111';
@@ -451,22 +453,27 @@ function grade() {
   const pass = ok => ok ? 10 : 0;
 
   // ---- Comprehension ----
-  // T3 sequence: the eye starts upper left and moves to lower right (Ngo et al. 2000, sec. 2.4)
+  // T3 position predicts early attention on web pages (Buscher et al. 2009; Still 2018), so higher elements are seen first
   // a deleted headline, support text or button fails the item, so deletion never counts as a repair
   const order = [['headline', 'support'], ['support', 'cta'], ['headline', 'cta']];
   const orderOk = ['headline', 'support', 'cta'].every(on) ? order.filter(([a, b]) => cy(a) < cy(b)).length / order.length : 0;
   // T3 proximity (Wertheimer 1938): the price belongs to the sign-up group, so its nearest element is the button or the email field
   const priceGrouped = on('price') && on('cta') && ['cta', 'email'].includes(nearest('price'));
-  // T3 the eye moves from big objects to small (Ngo et al. 2000, sec. 2.4), so the headline is the largest text
+  // T3 distinctiveness guides attention (Wolfe & Horowitz 2004); size alone predicts it poorly (Still 2018),
+  // so the headline must be both the largest text and at least as high in contrast as any other text
+  const pageCol = rgb(T.bg), textCon = id => ratio(rgb(getComputedStyle(canvas.querySelector(`[data-id=${id}]`)).color), pageCol);
   const texts = ids.filter(id => TYPE[id] === 'text' && id !== 'headline');
-  const headLargest = on('headline') && texts.every(id => L[id].fs < L.headline.fs);
+  const headLargest = on('headline') && texts.every(id => L[id].fs < L.headline.fs && textCon(id) <= textCon('headline'));
 
   // ---- Conversion ----
   // T1 WCAG 2.2 SC 2.5.5 (AAA) target size 44 x 44; Fitts 1954: larger targets are faster to hit
   const ctaBig = on('cta') && B.cta.w >= 44 && B.cta.h >= 44;
-  // T3 one primary action: the main button is the biggest button
-  const ctaBiggest = on('cta') && ids.filter(id => TYPE[id] === 'button' && id !== 'cta').every(id => area(B[id]) < area(B.cta));
-  // T3 Hick 1952: decision time grows with the number of choices, so one button passes
+  // T3 the main button is the most distinct button: biggest area and at least the same contrast with the page
+  // (Wolfe & Horowitz 2004; Itti & Koch 2001; Still 2018). The second button is an outline on the page colour.
+  const btnCon = id => ratio(rgb(id === 'second' ? T.bg : L[id].bg), pageCol);
+  const ctaBiggest = on('cta') && ids.filter(id => TYPE[id] === 'button' && id !== 'cta').every(id => area(B[id]) < area(B.cta) && btnCon(id) <= btnCon('cta'));
+  // T3 Hick 1952; Hyman 1953: decision time grows with the number of choices, so one button passes.
+  // The claim is decision time only: the choice overload effect on action averages near zero (Scheibehenne et al. 2010)
   const buttons = ids.filter(id => TYPE[id] === 'button').length;
 
   // ---- Visual organization ----
@@ -475,7 +482,10 @@ function grade() {
     const a = B[ids[i]], b = B[ids[j]];
     overlapArea += Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
   }
-  // the image must stay on the page, so deleting it does not remove the overlap problem
+  // T3 no element covers text: occlusion lowers recognition (Rosenholtz et al. 2007), and text on a textured background
+  // is harder to read at low contrast (Scharff et al. 2000). Images sit behind text, so every overlap puts text on top of
+  // another element. ponytail: text on a picture always fails, because the editor cannot measure contrast against an image.
+  // The image must stay on the page, so deleting it does not remove the overlap problem
   const overlapPct = on('image') ? 100 * overlapArea / (W * H) : NaN;
   // T2 balance BM, Ngo et al. 2000 eq. 1-5. Colour c: 0 white .. 1 black, from relative luminance.
   // ponytail: shape term s_ij omitted, every object is a rectangle so it adds the same to each side.
@@ -509,17 +519,17 @@ function grade() {
   const yes = ok => ok ? 'yes' : 'no';
   const R = {
     Comprehension: [
-      ['Reading order: headline, text, button', Math.round(orderOk * 100) + '% of pairs', Math.round(orderOk * 10), 'T3 · Ngo 2000 sequence'],
+      ['Reading order: headline, text, button', Math.round(orderOk * 100) + '% of pairs', Math.round(orderOk * 10), 'T3 · Buscher 2009, Still 2018'],
       ['Price grouped with the button', yes(priceGrouped), pass(priceGrouped), 'T3 · proximity, Wertheimer 1938'],
-      ['Headline is the largest text', yes(headLargest), pass(headLargest), 'T3 · Ngo 2000 sequence'],
+      ['Headline is the most distinct text', yes(headLargest), pass(headLargest), 'T3 · Wolfe & Horowitz 2004, Still 2018'],
     ],
     Conversion: [
       ['Main button ≥ 44×44px', on('cta') ? `${B.cta.w.toFixed(0)}×${B.cta.h.toFixed(0)}` : 'missing', pass(ctaBig), 'T1 · WCAG 2.5.5, Fitts 1954'],
-      ['Main button is the biggest button', yes(ctaBiggest), pass(ctaBiggest), 'T3 · one primary action'],
-      ['One button only', buttons + ' buttons', pass(buttons === 1), 'T3 · Hick 1952'],
+      ['Main button is the most distinct button', yes(ctaBiggest), pass(ctaBiggest), 'T3 · Wolfe & Horowitz 2004, Itti & Koch 2001'],
+      ['One button only', buttons + ' buttons', pass(buttons === 1), 'T3 · Hick 1952, Hyman 1953'],
     ],
     'Visual organization': [
-      ['No overlap', isNaN(overlapPct) ? 'image deleted' : overlapPct.toFixed(1) + '% of page', pass(overlapPct === 0), 'T3 · zero by definition'],
+      ['No element covers text', isNaN(overlapPct) ? 'image deleted' : overlapPct.toFixed(1) + '% of page', pass(overlapPct === 0), 'T3 · Rosenholtz 2007, Scharff 2000'],
       ['Headline grouped with its text', yes(headGrouped), pass(headGrouped), 'T3 · proximity, Wertheimer 1938'],
       ['Feature row on one line', isNaN(featSpread) ? 'feature deleted' : featSpread.toFixed(0) + 'px spread', pass(featSpread === 0), 'T3 · Ngo 2000 regularity'],
       ['Balance BM', BM.toFixed(2), Math.round(BM * 10), 'T2 · Ngo 2000 eq. 1'],
