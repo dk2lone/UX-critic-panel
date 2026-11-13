@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Landing Page Editor</title>
+<style>
+  :root { --bg:#f4f4f2; --fg:#1d1d1f; --muted:#6b6b70; --line:#dcdcd8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.4 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--fg); display:flex; flex-direction:column; height:100vh; }
+  .work { display:flex; flex:1; min-height:0; }
+  aside { flex:none; overflow:auto; padding:16px; }
+  main { flex:1; }
+  aside.score { width:340px; border-right:0; border-left:1px solid var(--line); }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:18px 0 8px; }
+  .seg { display:flex; gap:4px; }
+  button.ui { padding:6px 8px; border:1px solid var(--line); background:#fff; border-radius:6px; cursor:pointer; font:inherit; font-size:12px; }
+  .seg button.ui { flex:1; }
+  button.ui.on { background:var(--fg); color:#fff; border-color:var(--fg); }
+  .row { display:flex; gap:6px; align-items:center; margin:6px 0; }
+  .row label { width:70px; color:var(--muted); }
+  .row input { flex:1; }
+  .hidden-list button { display:block; width:100%; text-align:left; margin:4px 0; }
+  .hint { color:var(--muted); font-size:12px; }
+  main { overflow:auto; padding:20px; }
+  #canvas { position:relative; width:960px; height:640px; margin:0 auto; background-color:var(--page-bg, #fff); border:1px solid var(--line); border-radius:6px; font-family:var(--body-font, Georgia, serif); color:var(--page-fg, #222); user-select:none; }
+  #canvas { background-image:radial-gradient(var(--dot, #e6e6e6) 1px, transparent 1px); background-size:20px 20px; }
+  .band { position:absolute; left:0; right:0; border-top:1px solid #f0f0f0; pointer-events:none; }
+  .band span { position:absolute; left:6px; top:2px; font:10px system-ui; color:#bbb; text-transform:uppercase; letter-spacing:.06em; }
+  .el { position:absolute; z-index:1; cursor:move; outline:1px dashed transparent; }
+  .el:hover { outline-color:#bbb; }
+  .el.sel { outline:2px solid #2563eb; }
+  .el.flag { outline:3px solid #e53935 !important; }
+  .find .el { cursor:crosshair; }
+  body.participant aside.score, body.participant .researcher { display:none; }
+  .bar { display:flex; align-items:center; gap:6px; flex-wrap:wrap; padding:6px 12px; background:#fff; border-bottom:1px solid var(--line); font-size:13px; }
+  .bar .sep { width:1px; height:22px; background:var(--line); margin:0 4px; }
+  .bar .name { min-width:120px; color:var(--muted); }
+  .bar .name b { color:var(--fg); font-weight:600; }
+  .bar button.ui, .bar select { font-size:13px; padding:4px 9px; }
+  .bar button.ui:disabled, .bar select:disabled, .bar input:disabled { opacity:.4; cursor:default; }
+  .bar .fsv { width:44px; text-align:center; font-variant-numeric:tabular-nums; }
+  .bar input[type=color] { width:34px; height:26px; padding:0 2px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  .bar .grow { flex:1; }
+  .bar .seg { display:flex; gap:0; }
+  .bar .seg button.ui { border-radius:0; flex:none; }
+  .bar .seg button.ui:first-child { border-radius:6px 0 0 6px; } .bar .seg button.ui:last-child { border-radius:0 6px 6px 0; }
+  .menu { position:relative; }
+  .drop { display:none; position:absolute; right:0; top:calc(100% + 6px); z-index:20; min-width:300px; flex-direction:column; gap:10px;
+          background:#fff; border:1px solid var(--line); border-radius:8px; padding:12px; box-shadow:0 6px 20px rgba(0,0,0,.08); }
+  .drop.open { display:flex; }
+  .drop .lbl { font-size:12px; color:var(--muted); margin-bottom:-4px; }
+  .drop .seg button.ui { flex:1; }
+  aside.score h2 { text-transform:none; letter-spacing:0; font-size:13px; font-weight:600; color:var(--fg); border-bottom:1px solid var(--fg); padding-bottom:3px; margin:16px 0 0; }
+  aside.score h2:first-child { margin-top:0; }
+  table.t { width:100%; border-collapse:collapse; font-size:12.5px; font-variant-numeric:tabular-nums; }
+  .t td { padding:3px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+  .t td + td { text-align:right; white-space:nowrap; padding-left:10px; }
+  .t .v { color:var(--muted); }
+  .t tr.sub td { font-weight:600; padding-top:9px; }
+  .t .low { color:#a3231b; font-weight:600; }
+  .t small { display:block; color:var(--muted); }
+  .el .h { position:absolute; right:-6px; bottom:-6px; width:12px; height:12px; background:#2563eb; border:2px solid #fff; border-radius:3px; cursor:nwse-resize; display:none; }
+  .el.sel .h { display:block; }
+  .el.button { display:grid; place-items:center; border-radius:var(--radius, 8px); font-family:var(--ui-font, system-ui); font-weight:600; }
+  .el.ghost { border:1px solid var(--muted-fg, #999); color:var(--page-fg, #333); font-weight:500; }
+  .el.input { border:1px solid var(--muted-fg, #bbb); border-radius:var(--radius, 8px); display:flex; align-items:center; padding:0 14px; color:#999; font:15px system-ui; }
+  .el.image { z-index:0; border-radius:8px; display:grid; place-items:center; color:#fff; font:12px system-ui; }
+  .el.text b { display:block; margin-bottom:4px; }
+  .el[data-id=headline] { font-family:var(--head-font); font-weight:var(--head-weight, 700); line-height:1.15; letter-spacing:var(--head-spacing, 0); }
+  .el[data-id=nav], .el[data-id=price] { font-family:var(--ui-font, system-ui); }
+  .el[data-id=nav] { word-spacing:14px; }
+  .el[data-id=logo] { font-family:var(--head-font); font-weight:700; }
+  .el.image { container-type:size; }
+  .el.image .art { font-size:45cqmin; line-height:1; }  /* scales with the image box */
+  .el.image .bars { display:flex; align-items:flex-end; gap:10px; height:55%; }
+  .el.image .bars i { width:26px; background:#fff; opacity:.85; border-radius:4px 4px 0 0; }
+</style>
+</head>
+<body class="participant">
+
+<div class="bar">
+  <div class="seg" id="modes"><button class="ui" data-mode="find" title="Click each element that has a problem">Part 1: Find</button><button class="ui on" data-mode="fix" title="Fix the page">Part 2: Fix</button></div>
+  <span class="sep"></span>
+  <span class="name" id="selName">No element selected</span>
+  <button class="ui" id="fsDown" title="Smaller text">A−</button><span class="fsv" id="fsVal">–</span><button class="ui" id="fsUp" title="Larger text">A+</button>
+  <input type="color" id="bg" title="Button color">
+  <button class="ui" id="remove">Remove</button>
+  <span class="sep"></span>
+  <select id="addEl"></select>
+  <span class="grow"></span>
+  <div class="menu">
+    <button class="ui" id="menuBtn">Critic ▾</button>
+    <div class="drop" id="drop">
+      <span class="lbl">Page type</span>
+      <div class="seg" id="pages"></div>
+      <span class="lbl">Start layout</span>
+      <div class="seg"><button class="ui" id="reset">Flawed start</button><button class="ui" id="good">Good example</button></div>
+      <button class="ui" id="rubricBtn">Show rubric</button>
+    </div>
+  </div>
+</div>
+
+<div class="work">
+<main><div id="canvas"></div>
+  <p class="hint" style="text-align:center">Drag to move. Drag the blue corner to resize. Delete removes the selected element.</p></main>
+
+<aside class="score">
+  <h2>Planted-problem test</h2>
+  <div id="test"></div>
+  <h2>Rubric</h2>
+  <div id="score"></div>
+  <p class="hint">Items score 0–10. Critic rows and the total are out of 100, each critic weighted equally. WCAG items use the official thresholds. Other ranges are drafts with no source yet.</p>
+</aside>
+</div>
+
+<script>
+const W = 960, H = 640, FOLD = 640;  // one screen: the whole page is what gets evaluated
+const PAGES = {
+  educational: { hue:150, logo:'Codepath', cta:'Start the free course', second:'See the syllabus', nav:'Courses Syllabus Mentors Blog',
+    headline:'Learn Python in 30 days with a mentor who reviews your code', support:'Each day is a 20 minute lesson and a small project. A mentor reviews your code every week.',
+    feats:[['Daily lessons','Short video lessons that fit around school or work.'],['Code review','A mentor reviews your code every week and explains what to fix.'],['Certificate','Finish the projects to earn a certificate for your résumé.']],
+    price:'Free for 7 days, then $19/month',
+    extra:{ badge:'🗓 Next cohort starts Jan 12 · 14 seats left' } },
+  product: { hue:260, logo:'Aero', cta:'Buy Aero', second:'Compare models', nav:'Shop Compare Reviews Support',
+    headline:'Noise-cancelling headphones that last 40 hours', support:'Aero blocks up to 95% of background noise and folds flat for travel.',
+    feats:[['Noise cancelling','Six microphones cancel outside noise before you hear it.'],['40-hour battery','A full charge lasts about a week of commuting.'],['Travel ready','Folds flat into a thin case that fits in a laptop bag.']],
+    price:'$249, free shipping and 30-day returns',
+    extra:{ rating:'★★★★☆ 4.6 · 2,310 reviews' } },
+  business: { hue:210, logo:'Ledgerly', cta:'Start free trial', second:'Book a demo', nav:'Product Pricing Customers Login',
+    headline:'Bookkeeping for small businesses, done in minutes a week', support:'Ledgerly connects to your bank, sorts each transaction, and prepares tax-ready reports.',
+    feats:[['Bank sync','Transactions import every night from your bank and card accounts.'],['Auto-sorting','Each transaction gets a category that you approve with one click.'],['Tax-ready','Profit and loss and balance sheet reports stay up to date.']],
+    price:'14 days free, then $29/month',
+    extra:{ email:'Work email' } },
+};
+// Visual style per page type. Only the look changes; elements and planted problems stay parallel.
+const THEME = {
+  educational: { bg:'#fdf6e9', fg:'#2b2a28', muted:'#a89f8f', dot:'#efe4d0', radius:'999px', btn:'#1f7a4d', flawBtn:'#9fd9b8',
+    head:'"Trebuchet MS", "Avenir Next Rounded", sans-serif', headWeight:700, body:'"Avenir Next", system-ui, sans-serif', ui:'"Avenir Next", system-ui',
+    img:'linear-gradient(135deg, #ffd59e, #f5a46b)', art:'<span class="art">🐍💻</span>' },
+  product: { bg:'#101014', fg:'#f2f2f5', muted:'#6c6c78', dot:'#24242c', radius:'3px', btn:'#b79cff', flawBtn:'#3a2f63',
+    head:'"Helvetica Neue", Helvetica, sans-serif', headWeight:300, headSpacing:'-0.02em', body:'"Helvetica Neue", Helvetica, sans-serif', ui:'"Helvetica Neue", Helvetica',
+    img:'radial-gradient(circle at 50% 40%, #4a3b85, #101014 70%)', art:'<span class="art">🎧</span>' },
+  business: { bg:'#ffffff', fg:'#1b2433', muted:'#9aa3b2', dot:'#e9edf2', radius:'6px', btn:'#1f5fa8', flawBtn:'#a9c4e6',
+    head:'Georgia, serif', headWeight:700, body:'Georgia, serif', ui:'system-ui',
+    img:'linear-gradient(160deg, #3b7dd8, #1f4f8f)', art:'<div class="bars"><i style="height:40%"></i><i style="height:65%"></i><i style="height:50%"></i><i style="height:85%"></i><i style="height:100%"></i></div>' },
+};
+const TYPE = { logo:'text', nav:'text', headline:'text', support:'text', price:'text', feat1:'text', feat2:'text', feat3:'text', cta:'button', second:'button', image:'image',
+  badge:'text', rating:'text', email:'input' };
+const NAME = { logo:'Logo', nav:'Nav links', headline:'Headline', support:'Support text', price:'Price', feat1:'Feature 1', feat2:'Feature 2', feat3:'Feature 3', cta:'Main button', second:'Second button', image:'Image',
+  badge:'Start date', rating:'Rating', email:'Email field' };
+const BODY = ['support', 'price', 'feat1', 'feat2', 'feat3', 'badge', 'rating'];
+// ponytail: limited free-form. Elements snap to a 20px grid and stay inside their own section,
+// so every participant's page keeps the same structure and scores stay comparable.
+const GRID = 20, snap = v => Math.round(v / GRID) * GRID;
+const SECTIONS = { header:[0, 100], hero:[100, 480], features:[480, 640] };
+const SECTION_OF = { logo:'header', nav:'header', headline:'hero', support:'hero', cta:'hero', second:'hero', price:'hero', image:'hero',
+  feat1:'features', feat2:'features', feat3:'features',
+  badge:'hero', rating:'hero', email:'hero' };
+// Page-specific elements: good positions, then the flawed start positions.
+const EXTRA = {
+  educational: { badge:{x:40,y:450,w:420,fs:14,on:1} },
+  product: { rating:{x:40,y:450,w:320,fs:15,on:1} },
+  business: { email:{x:40,y:330,w:280,h:54,on:1} },
+};
+const EXTRA_FLAWED = {
+  educational: { badge:{x:600,y:380,w:340,fs:15} },
+  product: { rating:{x:700,y:380,w:240,fs:15} },
+  business: { email:{x:500,y:420,w:180,h:40} },
+};
+
+function defaults(hue) {
+  const btn = THEME[page].btn;
+  const d = {
+    logo:{x:40,y:24,w:200,fs:20,on:1}, nav:{x:560,y:26,w:360,fs:15,on:1},
+    headline:{x:40,y:110,w:520,fs:38,on:1}, support:{x:40,y:250,w:500,fs:17,on:1},
+    cta:{x:40,y:330,w:220,h:54,bg:btn,on:1}, second:{x:280,y:330,w:180,h:54,on:0},
+    price:{x:40,y:405,w:420,fs:15,on:1}, image:{x:600,y:110,w:320,h:260,on:1},
+    feat1:{x:40,y:510,w:270,fs:15,on:1}, feat2:{x:345,y:510,w:270,fs:15,on:1}, feat3:{x:650,y:510,w:270,fs:15,on:1},
+    ...structuredClone(EXTRA[page]),
+  };
+  if (page === 'business') d.cta.x = 340;  // button sits next to the email field
+  return d;
+}
+// The study starting point: a page with clear problems for participants to fix.
+function flawed(hue) {
+  const d = defaults(hue);
+  Object.assign(d.headline, { x:40, y:300, w:860, fs:24 });
+  Object.assign(d.support, { x:540, y:120, w:300, fs:13 });
+  Object.assign(d.cta, { x:700, y:420, w:120, h:40, bg:THEME[page].flawBtn });
+  Object.assign(d.second, { x:40, y:400, w:260, h:60, on:1 });
+  Object.assign(d.price, { x:40, y:120, w:300, fs:13 });
+  Object.assign(d.image, { x:360, y:180, w:400, h:260 });
+  Object.assign(d.feat1, { y:500 }); Object.assign(d.feat2, { y:560 }); Object.assign(d.feat3, { y:520, fs:13 });
+  for (const [id, v] of Object.entries(EXTRA_FLAWED[page])) Object.assign(d[id], v);
+  return d;
+}
+let page = 'business', L = flawed(PAGES[page].hue), sel = null;
+let mode = 'fix', flags = new Set(), reasons = {}, locked = false, M = {};
+// Rubric points when the page loaded. Part 2 damage = items that fell by DAMAGE_DROP or more from here.
+// ponytail: a fixed 3-point drop separates damage from small trade-offs; a big trade-off still counts.
+let base = null, items = {};
+const DAMAGE_DROP = 3;
+
+// Answer key. `targets`: clicking any of these elements in Part 1 counts as finding the problem.
+// ponytail: one click on the main button finds both P1 and P7; add a "what is wrong" picker if that is too generous.
+// Nav links are a real trade-off (Comprehension wants them, Conversion does not), so flagging them is neither found nor a false alarm.
+const NEUTRAL = ['nav'];
+const PROBLEMS = [
+  { id:'P1', critic:'Conversion', text:'Main button is small and low in the hero', targets:['cta'], fixed:() => M.ctaPct >= 1.5 && M.ctaPct <= 5 && M.ctaY >= 100 && M.ctaY <= 340 },
+  { id:'P2', critic:'Conversion', text:'Second button is bigger than the main button', targets:['second'], fixed:() => M.dom >= 1.5 },
+  { id:'P3', critic:'Comprehension', text:'Price is far from the button', targets:['price'], fixed:() => M.priceGap <= 60 },
+  { id:'P4', critic:'Comprehension', text:'Headline is small and some body text is under 15px', targets:['headline', 'support', 'feat3'], fixed:() => M.headRatio >= 1.6 && M.bodyMin >= 15 },
+  { id:'P5', critic:'Visual', text:'Image covers the text', targets:['image'], fixed:() => M.overlapPct < 0.1 },
+  { id:'P6', critic:'Visual', text:'Feature row is not aligned', targets:['feat1', 'feat2', 'feat3'], fixed:() => M.featSpread === 0 },
+  { id:'P7', critic:'Accessibility', text:'Pale button fails 3:1 contrast', targets:['cta'], fixed:() => M.btnVsPage >= 3 },
+];
+
+function testPanel() {
+  const targets = new Set(PROBLEMS.flatMap(p => p.targets));
+  const found = PROBLEMS.filter(p => p.targets.some(t => flags.has(t)));
+  const fixed = PROBLEMS.filter(p => p.fixed());
+  const falseAlarms = [...flags].filter(id => !targets.has(id) && !NEUTRAL.includes(id));
+  const damage = base ? Object.keys(items).filter(n => n in base && items[n] <= base[n] - DAMAGE_DROP) : [];
+  const yn = (ok, yes, no) => ok ? yes : `<span class="low">${no}</span>`;
+  let html = `<table class="t"><tr><td>Found</td><td>${found.length} / ${PROBLEMS.length}</td></tr>
+    <tr><td>Fixed</td><td>${fixed.length} / ${PROBLEMS.length}</td></tr><tr><td>False alarms <small>Part 1: flagged but correct</small></td><td>${falseAlarms.length}</td></tr>
+    <tr><td>Damage <small>Part 2: items that fell ${DAMAGE_DROP}+ points</small></td><td>${damage.length}</td></tr>`;
+  {
+    html += `<tr class="sub"><td>Answer key</td><td>found · fixed</td></tr>` + PROBLEMS.map(p =>
+      `<tr><td>${p.id} ${p.text}<small>${p.critic}${p.targets.filter(t => flags.has(t)).map(t => ` · “${reasons[t]}”`).join('')}</small></td>
+       <td>${yn(found.includes(p), 'yes', 'no')} · ${yn(p.fixed(), 'yes', 'no')}</td></tr>`).join('') +
+      `<tr><td>Neutral: nav links<small>Trade-off, not scored. Flagged · reason</small></td><td>${flags.has('nav') ? 'yes' : 'no'}</td></tr>` +
+      (flags.has('nav') ? `<tr><td colspan="2"><small>“${reasons.nav}”</small></td></tr>` : '') +
+      falseAlarms.map(id => `<tr><td><span class="low">False alarm:</span> ${NAME[id]}<small>“${reasons[id]}”</small></td><td></td></tr>`).join('') +
+      damage.map(n => `<tr><td><span class="low">Damage:</span> ${n}</td><td>${base[n]} → ${items[n]}</td></tr>`).join('');
+  }
+  html += '</table>';
+  document.getElementById('test').innerHTML = html;
+}
+const canvas = document.getElementById('canvas');
+
+function content(id) {
+  const p = PAGES[page];
+  if (p.extra[id]) return p.extra[id];
+  if (id.startsWith('feat')) { const [t, d] = p.feats[+id[4] - 1]; return `<b>${t}</b>${d}`; }
+  return { logo:p.logo, nav:p.nav, headline:p.headline, support:p.support, price:p.price,
+           cta:p.cta, second:p.second, image:THEME[page].art }[id];
+}
+
+// ---- WCAG contrast ----
+function rgb(color) { const d = document.createElement('div'); d.style.color = color; document.body.append(d);
+  const v = getComputedStyle(d).color.match(/\d+(\.\d+)?/g).slice(0, 3).map(Number); d.remove(); return v; }
+const lum = c => c.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+const labelFor = bg => ratio(rgb(bg), [255, 255, 255]) >= ratio(rgb(bg), [17, 17, 17]) ? '#fff' : '#111';
+
+function place(el, id) {
+  const m = L[id];
+  Object.assign(el.style, { left:m.x + 'px', top:m.y + 'px', width:m.w + 'px' });
+  if (TYPE[id] === 'text') el.style.fontSize = m.fs + 'px';
+  else { el.style.height = m.h + 'px'; }
+  if (TYPE[id] === 'button') el.style.fontSize = Math.round(Math.min(m.h * 0.36, m.w / 9)) + 'px';
+}
+
+function render() {
+  const hue = PAGES[page].hue, T = THEME[page];
+  for (const [k, v] of Object.entries({ '--page-bg':T.bg, '--page-fg':T.fg, '--muted-fg':T.muted, '--dot':T.dot, '--radius':T.radius,
+    '--head-font':T.head, '--head-weight':T.headWeight, '--head-spacing':T.headSpacing || '0', '--body-font':T.body, '--ui-font':T.ui })) canvas.style.setProperty(k, v);
+  canvas.innerHTML = Object.entries(SECTIONS).map(([n, [t, b]]) =>
+    `<div class="band" style="top:${t}px;height:${b - t}px"><span>${n}</span></div>`).join('');
+  for (const id in L) {
+    if (!L[id].on) continue;
+    const el = document.createElement('div'), t = TYPE[id];
+    el.className = `el ${t}${id === 'second' ? ' ghost' : ''}${id === sel ? ' sel' : ''}${flags.has(id) ? ' flag' : ''}`;
+    el.dataset.id = id;
+    el.innerHTML = content(id) + '<div class="h"></div>';
+    if (t === 'button' && id !== 'second') { el.style.background = L[id].bg; el.style.color = labelFor(L[id].bg); }
+    if (t === 'image') el.style.background = T.img;
+    place(el, id); canvas.append(el);
+  }
+  document.getElementById('pages').innerHTML = Object.keys(PAGES).map(k =>
+    `<button class="ui ${k === page ? 'on' : ''}" data-page="${k}">${k[0].toUpperCase() + k.slice(1)}</button>`).join('');
+  inspector(); grade();
+}
+
+function inspector() {
+  const has = sel && L[sel].on, m = has ? L[sel] : null, t = has ? TYPE[sel] : null;
+  document.getElementById('selName').innerHTML = has ? `<b>${NAME[sel]}</b>` : 'No element selected';
+  const text = t === 'text', colored = t === 'button' && sel !== 'second';
+  for (const id of ['fsDown', 'fsUp']) document.getElementById(id).disabled = !text;
+  document.getElementById('fsVal').textContent = text ? m.fs + 'px' : '–';
+  const bg = document.getElementById('bg'); bg.disabled = !colored; if (colored) bg.value = hex(m.bg);
+  document.getElementById('remove').disabled = !has;
+  const off = Object.keys(L).filter(id => !L[id].on), add = document.getElementById('addEl');
+  add.innerHTML = `<option value="">${off.length ? 'Add element…' : 'Nothing to add'}</option>` + off.map(id => `<option value="${id}">${NAME[id]}</option>`).join('');
+  add.disabled = !off.length;
+}
+function setFs(delta) {
+  if (!sel || TYPE[sel] !== 'text') return;
+  const m = L[sel]; m.fs = Math.max(12, Math.min(56, m.fs + delta));
+  place(canvas.querySelector(`[data-id=${sel}]`), sel); inspector(); grade();
+}
+document.getElementById('fsDown').onclick = () => setFs(-2);
+document.getElementById('fsUp').onclick = () => setFs(2);
+document.getElementById('bg').oninput = e => { const m = L[sel]; m.bg = e.target.value;
+  const el = canvas.querySelector(`[data-id=${sel}]`); el.style.background = m.bg; el.style.color = labelFor(m.bg); grade(); };
+document.getElementById('remove').onclick = () => { if (sel) { L[sel].on = 0; sel = null; render(); } };
+document.getElementById('addEl').onchange = e => { const id = e.target.value; if (id) { L[id].on = 1; sel = id; render(); } };
+const hex = c => '#' + rgb(c).map(v => v.toString(16).padStart(2, '0')).join('');
+
+function select(id) {
+  sel = id;
+  canvas.querySelectorAll('.el').forEach(e => e.classList.toggle('sel', e.dataset.id === id));
+  inspector();
+}
+
+canvas.addEventListener('pointerdown', e => {
+  const el = e.target.closest('.el');
+  if (!el) return select(null);
+  if (mode === 'find') {
+    const id = el.dataset.id;
+    if (locked) return;
+    if (flags.has(id)) { flags.delete(id); delete reasons[id]; }
+    else { const r = prompt(`What is wrong with "${NAME[id]}"?`); if (!r) return; flags.add(id); reasons[id] = r; }
+    el.classList.toggle('flag', flags.has(id)); testPanel(); return;
+  }
+  const id = el.dataset.id, m = L[id], o = { ...m }, sx = e.clientX, sy = e.clientY, resize = e.target.classList.contains('h');
+  select(id); e.preventDefault();
+  const move = ev => {
+    const dx = ev.clientX - sx, dy = ev.clientY - sy;
+    const [top, bottom] = SECTIONS[SECTION_OF[id]], clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    if (resize) {
+      m.w = clamp(snap(o.w + dx), 40, W - m.x);
+      if (TYPE[id] !== 'text') m.h = clamp(snap(o.h + dy), 20, bottom - m.y);
+    } else {
+      m.x = clamp(snap(o.x + dx), 0, W - m.w);
+      m.y = clamp(snap(o.y + dy), top, Math.max(top, bottom - el.offsetHeight));
+    }
+    place(el, id); grade();
+  };
+  const up = () => { removeEventListener('pointermove', move); removeEventListener('pointerup', up); };
+  addEventListener('pointermove', move); addEventListener('pointerup', up);
+});
+document.addEventListener('click', e => {
+  if (e.target.dataset.page) { page = e.target.dataset.page; L = flawed(PAGES[page].hue); sel = null; flags.clear(); reasons = {}; locked = false; base = null; render(); }
+  if (e.target.dataset.mode) {
+    if (e.target.dataset.mode === 'find' && locked) return alert('Part 1 is finished. Flags are locked.');
+    if (e.target.dataset.mode === 'fix' && mode === 'find' && flags.size) locked = true;
+    mode = e.target.dataset.mode; sel = null; canvas.classList.toggle('find', mode === 'find');
+    document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('on', b.dataset.mode === mode)); render(); }
+});
+document.addEventListener('keydown', e => {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && sel && e.target.tagName !== 'INPUT') { L[sel].on = 0; sel = null; render(); }
+});
+document.getElementById('reset').onclick = () => { L = flawed(PAGES[page].hue); sel = null; flags.clear(); reasons = {}; locked = false; base = null; render(); };
+// The researcher view is reached only by keyboard, so a participant has no visible way to the scores.
+const drop = document.getElementById('drop');
+document.getElementById('menuBtn').onclick = () => drop.classList.toggle('open');
+const rubricBtn = document.getElementById('rubricBtn');
+const syncRubricBtn = () => rubricBtn.textContent = document.body.classList.contains('participant') ? 'Show rubric' : 'Hide rubric';
+rubricBtn.onclick = () => { document.body.classList.toggle('participant'); syncRubricBtn(); };
+// Close on any click outside the menu. Clicks inside must still reach the page-type handler below.
+// composedPath is fixed when the click starts, so it still works after render() replaces the clicked button.
+document.addEventListener('click', e => { if (!e.composedPath().includes(drop.parentElement)) drop.classList.remove('open'); });
+document.addEventListener('keydown', e => { if (e.shiftKey && e.key === 'R') { document.body.classList.toggle('participant'); syncRubricBtn(); } });
+document.getElementById('good').onclick = () => { L = defaults(PAGES[page].hue); sel = null; base = null; render(); };
+
+// ---- grading ----
+function boxes() {
+  const c = canvas.getBoundingClientRect(), out = {};
+  canvas.querySelectorAll('.el').forEach(el => { const r = el.getBoundingClientRect();
+    out[el.dataset.id] = { x:r.left - c.left - 1, y:r.top - c.top - 1, w:r.width, h:r.height }; });
+  return out;
+}
+
+function grade() {
+  const B = boxes(), ids = Object.keys(B), on = id => id in B;
+  const above = ids.filter(id => B[id].y < FOLD);
+  const area = b => b.w * b.h;
+
+  // alignment points: distinct left edges (Ngo et al. simplicity measure), 6px tolerance
+  const lefts = [];
+  above.map(id => B[id].x).sort((a, b) => a - b).forEach(x => { if (!lefts.length || x - lefts[lefts.length - 1] > 6) lefts.push(x); });
+  // balance (Ngo, Teo & Byrne 2000): weight = area x distance from the center axis
+  let wl = 0, wr = 0, wt = 0, wb = 0;
+  for (const id of above) { const b = B[id], cx = b.x + b.w / 2, cy = b.y + b.h / 2, a = area(b);
+    if (cx < W / 2) wl += a * (W / 2 - cx); else wr += a * (cx - W / 2);
+    if (cy < FOLD / 2) wt += a * (FOLD / 2 - cy); else wb += a * (cy - FOLD / 2); }
+  const bal = 1 - (Math.abs(wl - wr) / (Math.max(wl, wr) || 1) + Math.abs(wt - wb) / (Math.max(wt, wb) || 1)) / 2;
+  // white space, sampled every 8px
+  let filled = 0, total = 0;
+  for (let y = 0; y < FOLD; y += 8) for (let x = 0; x < W; x += 8) { total++;
+    if (above.some(id => { const b = B[id]; return x >= b.x && x < b.x + b.w && y >= b.y && y < b.y + b.h; })) filled++; }
+  const white = 100 * (1 - filled / total);
+
+  // Each item scores 0..10: full marks inside [lo, hi], falling linearly to 0 at `fall` beyond either edge.
+  // ponytail: linear falloff is a guess at "how bad is a bit off"; replace with ranges fit to expert-rated pages.
+  const range = (v, lo, hi, fall) => Math.round(10 * (v >= lo && v <= hi ? 1 : Math.max(0, 1 - (v < lo ? lo - v : v - hi) / fall)));
+  const gap = (a, b) => Math.hypot(Math.max(0, b.x - (a.x + a.w), a.x - (b.x + b.w)), Math.max(0, b.y - (a.y + a.h), a.y - (b.y + b.h)));
+  const cy = id => B[id].y + B[id].h / 2;
+  const fs = id => L[id].fs;
+
+  // Comprehension
+  const order = [['headline', 'support'], ['support', 'cta'], ['headline', 'cta']].filter(([a, b]) => on(a) && on(b));
+  const orderOk = order.length ? order.filter(([a, b]) => cy(a) < cy(b)).length / order.length : 0;
+  const headLines = on('headline') ? B.headline.h / (fs('headline') * 1.15) : 9;
+  const priceGap = on('price') && on('cta') ? gap(B.cta, B.price) : 999;
+  const bodySizes = ids.filter(id => BODY.includes(id)).map(fs);
+  const bodyMin = bodySizes.length ? Math.min(...bodySizes) : 0;
+  const otherMax = Math.max(0, ...ids.filter(id => TYPE[id] === 'text' && id !== 'headline' && id !== 'logo').map(fs));
+  const headRatio = on('headline') && otherMax ? fs('headline') / otherMax : 0;
+
+  // Conversion
+  const ctaPct = on('cta') ? 100 * area(B.cta) / (W * FOLD) : 0;
+  const exits = on('second') ? 1 : 0;
+  const dom = !on('cta') ? 0 : !on('second') ? 99 : area(B.cta) / area(B.second);
+  const clear = on('cta') ? Math.min(999, ...above.filter(id => id !== 'cta' && id !== 'email').map(id => gap(B.cta, B[id]))) : 0;
+
+  // Visual organization
+  let overlapArea = 0;
+  for (let i = 0; i < above.length; i++) for (let j = i + 1; j < above.length; j++) {
+    const a = B[above[i]], b = B[above[j]];
+    overlapArea += Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  }
+  const overlapPct = 100 * overlapArea / (W * FOLD);
+  const headSupGap = on('headline') && on('support') ? gap(B.headline, B.support) : 999;
+  const feats = ['feat1', 'feat2', 'feat3'].filter(on);
+  const featSpread = feats.length > 1 ? Math.max(...feats.map(id => B[id].y)) - Math.min(...feats.map(id => B[id].y)) : 0;
+  const sizes = new Set(ids.filter(id => TYPE[id] === 'text').map(fs)).size;
+
+  // Accessibility (WCAG criteria are pass/fail by definition)
+  const filledBtns = ['cta'].filter(on);
+  const btnVsPage = filledBtns.length ? Math.min(...filledBtns.map(id => ratio(rgb(L[id].bg), rgb(THEME[page].bg)))) : 0;
+  const labelVsBtn = filledBtns.length ? Math.min(...filledBtns.map(id => ratio(rgb(L[id].bg), rgb(labelFor(L[id].bg))))) : 0;
+  const allBtns = ids.filter(id => TYPE[id] === 'button');
+  const targetOk = allBtns.length > 0 && allBtns.every(id => B[id].w >= 24 && B[id].h >= 24);
+
+  const R = {
+    Comprehension: [
+      ['Reading order: headline → text → button', Math.round(orderOk * 100) + '% of pairs in order', Math.round(orderOk * 10)],
+      ['Headline lines', headLines.toFixed(1) + ' lines', range(headLines, 1, 2, 2)],
+      ['Price next to button', priceGap === 999 ? 'missing' : priceGap.toFixed(0) + 'px away', range(priceGap, 0, 60, 160)],
+      ['Smallest body text', bodyMin + 'px', range(bodyMin, 15, 20, 4)],
+      ['Headline size vs other text', headRatio.toFixed(1) + '×', range(headRatio, 1.6, 3, 1)],
+    ],
+    Conversion: [
+      ['Main button size', ctaPct.toFixed(1) + '% of page', range(ctaPct, 1.5, 5, 3)],
+      ['Main button height on screen', on('cta') ? B.cta.y.toFixed(0) + 'px from top' : 'missing', on('cta') ? range(B.cta.y, 100, 340, 140) : 0],
+      ['Main button vs second button', dom === 99 ? 'no second button' : dom.toFixed(1) + '× area', range(dom, 1.5, 99, 1)],
+      ['Clear space around button', clear === 999 ? 'alone' : clear.toFixed(0) + 'px', range(clear, 24, 999, 24)],
+      ['Competing exits (second button)', exits, exits === 0 ? 10 : 5],
+    ],
+    'Visual organization': [
+      ['Overlap', overlapPct.toFixed(1) + '% of page', range(overlapPct, 0, 0, 3)],
+      ['Alignment points (left edges)', lefts.length, range(lefts.length, 1, 3, 4)],
+      ['Balance (Ngo)', bal.toFixed(2), range(bal, 0.8, 1, 0.4)],
+      ['White space', white.toFixed(0) + '%', range(white, 35, 60, 20)],
+      ['Headline–text grouping', headSupGap === 999 ? 'missing' : headSupGap.toFixed(0) + 'px gap', range(headSupGap, 8, 40, 60)],
+      ['Feature row aligned', featSpread.toFixed(0) + 'px spread', range(featSpread, 0, 0, 40)],
+      ['Distinct font sizes', sizes, range(sizes, 1, 4, 3)],
+    ],
+    'Accessibility (WCAG)': [
+      ['Button vs page ≥ 3:1 (1.4.11)', btnVsPage.toFixed(2) + ':1', btnVsPage >= 3 ? 10 : 0],
+      ['Button label ≥ 4.5:1 (1.4.3)', labelVsBtn.toFixed(2) + ':1', labelVsBtn >= 4.5 ? 10 : 0],
+      ['Buttons ≥ 24×24px (2.5.8)', targetOk ? 'yes' : 'no', targetOk ? 10 : 0],
+    ],
+  };
+
+  M = { ctaPct, ctaY: on('cta') ? B.cta.y : 9999, dom, priceGap, headRatio, bodyMin, overlapPct, featSpread, btnVsPage };
+
+  // Each critic counts 25% of the total, whatever its number of items.
+  let html = '', pcts = [];
+  for (const [crit, items] of Object.entries(R)) {
+    const pct = 100 * items.reduce((a, i) => a + i[2], 0) / (items.length * 10); pcts.push(pct);
+    html += `<tr class="sub"><td>${crit}</td><td>${pct.toFixed(0)}</td></tr>` +
+      items.map(([n, v, p]) => `<tr><td>${n}</td><td><span class="v">${v}</span>&nbsp; <span class="${p <= 3 ? 'low' : ''}">${p}</span></td></tr>`).join('');
+  }
+  const got = +(pcts.reduce((a, v) => a + v, 0) / pcts.length).toFixed(1), max = 100;
+  items = Object.fromEntries(Object.values(R).flat().map(([n, , p]) => [n, p]));
+  if (!base) base = { ...items };
+  document.getElementById('score').innerHTML = `<table class="t"><tr class="sub"><td>Total</td><td>${got}</td></tr>${html}</table>`;
+  testPanel();
+  window.lastGrade = { page, fold:FOLD, canvas:{ w:W, h:H }, total:got, max,
+    elements:Object.fromEntries(ids.map(id => [id, { ...B[id], ...(L[id].fs && { fontSize:L[id].fs }), ...(L[id].bg && { color:hex(L[id].bg) }) }])),
+    damage:base ? Object.keys(items).filter(n => items[n] <= base[n] - DAMAGE_DROP) : [],
+    flagged:Object.fromEntries([...flags].map(id => [id, reasons[id]])),
+    scores:Object.fromEntries(Object.entries(R).map(([k, items]) => [k, items.map(([n, v, p]) => ({ item:n, value:v, points:p }))])) };
+}
+
+
+render();
+</script>
+</body>
+</html>
