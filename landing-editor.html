@@ -452,8 +452,9 @@ function grade() {
 
   // ---- Comprehension ----
   // T3 sequence: the eye starts upper left and moves to lower right (Ngo et al. 2000, sec. 2.4)
-  const order = [['headline', 'support'], ['support', 'cta'], ['headline', 'cta']].filter(([a, b]) => on(a) && on(b));
-  const orderOk = order.length ? order.filter(([a, b]) => cy(a) < cy(b)).length / order.length : 0;
+  // a deleted headline, support text or button fails the item, so deletion never counts as a repair
+  const order = [['headline', 'support'], ['support', 'cta'], ['headline', 'cta']];
+  const orderOk = ['headline', 'support', 'cta'].every(on) ? order.filter(([a, b]) => cy(a) < cy(b)).length / order.length : 0;
   // T3 proximity (Wertheimer 1938): the price belongs to the sign-up group, so its nearest element is the button or the email field
   const priceGrouped = on('price') && on('cta') && ['cta', 'email'].includes(nearest('price'));
   // T3 the eye moves from big objects to small (Ngo et al. 2000, sec. 2.4), so the headline is the largest text
@@ -474,7 +475,8 @@ function grade() {
     const a = B[ids[i]], b = B[ids[j]];
     overlapArea += Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) * Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
   }
-  const overlapPct = 100 * overlapArea / (W * H);
+  // the image must stay on the page, so deleting it does not remove the overlap problem
+  const overlapPct = on('image') ? 100 * overlapArea / (W * H) : NaN;
   // T2 balance BM, Ngo et al. 2000 eq. 1-5. Colour c: 0 white .. 1 black, from relative luminance.
   // ponytail: shape term s_ij omitted, every object is a rectangle so it adds the same to each side.
   const dark = col => 1 - lum(rgb(col)), cFrame = dark(T.bg);
@@ -494,8 +496,9 @@ function grade() {
   // T3 proximity: the support text's nearest element is its headline
   const headGrouped = on('headline') && on('support') && nearest('support') === 'headline';
   // T3 regularity (Ngo et al. 2000, sec. 2.10): the feature row shares one start row
-  const feats = ['feat1', 'feat2', 'feat3'].filter(on);
-  const featSpread = feats.length > 1 ? Math.max(...feats.map(id => B[id].y)) - Math.min(...feats.map(id => B[id].y)) : 0;
+  // all three features must stay, so deleting the misplaced one does not pass
+  const feats = ['feat1', 'feat2', 'feat3'];
+  const featSpread = feats.every(on) ? Math.max(...feats.map(id => B[id].y)) - Math.min(...feats.map(id => B[id].y)) : NaN;
 
   // ---- Accessibility (T1, WCAG 2.2) ----
   const btnVsPage = on('cta') ? ratio(rgb(L.cta.bg), rgb(T.bg)) : 0;
@@ -516,9 +519,9 @@ function grade() {
       ['One button only', buttons + ' buttons', pass(buttons === 1), 'T3 · Hick 1952'],
     ],
     'Visual organization': [
-      ['No overlap', overlapPct.toFixed(1) + '% of page', pass(overlapPct === 0), 'T3 · zero by definition'],
+      ['No overlap', isNaN(overlapPct) ? 'image deleted' : overlapPct.toFixed(1) + '% of page', pass(overlapPct === 0), 'T3 · zero by definition'],
       ['Headline grouped with its text', yes(headGrouped), pass(headGrouped), 'T3 · proximity, Wertheimer 1938'],
-      ['Feature row on one line', featSpread.toFixed(0) + 'px spread', pass(featSpread === 0), 'T3 · Ngo 2000 regularity'],
+      ['Feature row on one line', isNaN(featSpread) ? 'feature deleted' : featSpread.toFixed(0) + 'px spread', pass(featSpread === 0), 'T3 · Ngo 2000 regularity'],
       ['Balance BM', BM.toFixed(2), Math.round(BM * 10), 'T2 · Ngo 2000 eq. 1'],
       ['Alignment RM', RM.toFixed(2), Math.round(RM * 10), 'T2 · Ngo 2000 eq. 46'],
       ['Density DM', DM.toFixed(2), Math.round(DM * 10), 'T2 · Ngo 2000 eq. 44'],
