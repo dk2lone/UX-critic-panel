@@ -62,7 +62,7 @@
   .t tr.sub td { font-weight:600; padding-top:9px; }
   .t .low { color:#a3231b; font-weight:600; }
   .t small { display:block; color:var(--muted); }
-  .el .h { position:absolute; right:-6px; bottom:-6px; width:12px; height:12px; background:#2563eb; border:2px solid #fff; border-radius:3px; cursor:nwse-resize; display:none; }
+  .el .h { position:absolute; right:-9px; bottom:-9px; width:18px; height:18px; background:#2563eb; border:2px solid #fff; border-radius:3px; cursor:nwse-resize; display:none; }
   .el.sel .h { display:block; }
   .el.button { display:grid; place-items:center; border-radius:var(--radius, 8px); font-family:var(--ui-font, system-ui); font-weight:600; }
   .el.ghost { border:1px solid var(--muted-fg, #999); color:var(--page-fg, #333); font-weight:500; }
@@ -120,7 +120,7 @@
 
 <div class="work">
 <main><div id="canvas"></div>
-  <p class="hint" style="text-align:center">Drag to move. Drag the blue corner to resize. Delete removes the selected element.</p></main>
+  <p class="hint" style="text-align:center">Drag to move. Drag the blue corner to resize. On text, drag down to make the text bigger. Delete removes the selected element.</p></main>
 
 <aside class="score">
   <h2>Planted-problem test</h2>
@@ -394,6 +394,8 @@ canvas.addEventListener('pointerdown', e => {
     if (resize) {
       m.w = clamp(snap(o.w + dx), 40, W - m.x);
       if (TYPE[id] !== 'text') m.h = clamp(snap(o.h + dy), 20, bottom - m.y);
+      // text has no set height, so the vertical drag sets the font size, same 12-56 range as the size buttons
+      else if (o.fs) m.fs = clamp(o.fs + Math.round(dy / 4), 12, 56);
     } else {
       m.x = clamp(snap(o.x + dx), 0, W - m.w);
       m.y = clamp(snap(o.y + dy), top, Math.max(top, bottom - el.offsetHeight));
@@ -404,7 +406,8 @@ canvas.addEventListener('pointerdown', e => {
   addEventListener('pointermove', move); addEventListener('pointerup', up);
 });
 document.addEventListener('click', e => {
-  if (e.target.dataset.page) { page = e.target.dataset.page; L = flawed(); sel = null; flags.clear(); reasons = {}; locked = false; render(); }
+  // the canvas also has data-page (for the theme), and a drag that ends off its start element sends the click to the canvas
+  if (e.target.dataset.page && e.target !== canvas) { page = e.target.dataset.page; L = flawed(); sel = null; flags.clear(); reasons = {}; locked = false; render(); }
   if (e.target.dataset.mode) {
     if (e.target.dataset.mode === 'find' && locked) return alert('Part 1 is finished. Flags are locked.');
     if (e.target.dataset.mode === 'fix' && mode === 'find' && flags.size) locked = true;
