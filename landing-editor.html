@@ -72,6 +72,9 @@
   .el[data-id=nav] { word-spacing:14px; }
   .el[data-id=logo] { font-family:var(--head-font); font-weight:700; }
   .el.image { container-type:size; }
+  #canvas[data-page=educational] .el[data-id^=feat] { background:#f6e8cf; border-radius:16px; padding:14px 16px; }
+  #canvas[data-page=product] .el[data-id^=feat] { text-align:center; border-top:1px solid #2c2c36; padding-top:12px; }
+  #canvas[data-page=business] .el[data-id^=feat] { border-left:3px solid #1f5fa8; padding-left:12px; }
   .el.image .art { font-size:45cqmin; line-height:1; }  /* scales with the image box */
   .el.image .bars { display:flex; align-items:flex-end; gap:10px; height:55%; }
   .el.image .bars i { width:26px; background:#fff; opacity:.85; border-radius:4px 4px 0 0; }
@@ -157,45 +160,44 @@ const SECTIONS = { header:[0, 100], hero:[100, 480], features:[480, 640] };
 const SECTION_OF = { logo:'header', nav:'header', headline:'hero', support:'hero', cta:'hero', second:'hero', price:'hero', image:'hero',
   feat1:'features', feat2:'features', feat3:'features',
   badge:'hero', rating:'hero', email:'hero' };
-// Page-specific elements: good positions, then the flawed start positions.
-const EXTRA = {
-  educational: { badge:{x:40,y:450,w:420,fs:14,on:1} },
-  product: { rating:{x:40,y:450,w:320,fs:15,on:1} },
-  business: { email:{x:40,y:330,w:280,h:54,on:1} },
+// Each page type has its own layout. business: text left, image right. product: image left, text right.
+// educational: one centered column. The good layout is the "Good example"; the flawed layout is the study start.
+const HEADER = { logo:{x:40,y:24,w:200,fs:20,on:1}, nav:{x:560,y:26,w:360,fs:15,on:1} };
+const LAYOUT = {
+  business: {
+    good: { headline:{x:40,y:110,w:540,fs:30}, support:{x:40,y:200,w:500,fs:17}, email:{x:40,y:280,w:280,h:54},
+      cta:{x:340,y:280,w:220,h:54}, second:{x:580,y:280,w:180,h:54,on:0}, price:{x:40,y:360,w:420,fs:15},
+      image:{x:600,y:110,w:320,h:260}, feat1:{x:40,y:510,w:270,fs:15}, feat2:{x:345,y:510,w:270,fs:15}, feat3:{x:650,y:510,w:270,fs:15} },
+    flawed: { headline:{x:40,y:300,w:860,fs:24}, support:{x:540,y:120,w:300,fs:13}, email:{x:500,y:420,w:180,h:40},
+      cta:{x:700,y:420,w:120,h:40}, second:{x:40,y:400,w:260,h:60,on:1}, price:{x:40,y:120,w:300,fs:13},
+      image:{x:360,y:180,w:400,h:260}, feat1:{x:40,y:500,w:270,fs:15}, feat2:{x:345,y:560,w:270,fs:15}, feat3:{x:650,y:520,w:270,fs:13} },
+  },
+  product: {
+    good: { image:{x:40,y:110,w:420,h:350}, rating:{x:500,y:120,w:420,fs:15}, headline:{x:500,y:150,w:440,fs:32},
+      support:{x:500,y:250,w:420,fs:17}, cta:{x:500,y:330,w:200,h:54}, second:{x:720,y:330,w:180,h:54,on:0},
+      price:{x:500,y:410,w:420,fs:15}, feat1:{x:40,y:510,w:270,fs:15}, feat2:{x:345,y:510,w:270,fs:15}, feat3:{x:650,y:510,w:270,fs:15} },
+    flawed: { image:{x:40,y:110,w:580,h:360}, rating:{x:500,y:120,w:420,fs:15}, headline:{x:500,y:260,w:420,fs:22},
+      support:{x:500,y:160,w:420,fs:17}, cta:{x:800,y:420,w:120,h:40}, second:{x:560,y:400,w:240,h:60,on:1},
+      price:{x:40,y:120,w:300,fs:15}, feat1:{x:40,y:490,w:270,fs:13}, feat2:{x:345,y:520,w:270,fs:13}, feat3:{x:650,y:550,w:270,fs:13} },
+  },
+  educational: {
+    good: { image:{x:400,y:104,w:160,h:66}, headline:{x:120,y:180,w:720,fs:34,ta:'center'}, support:{x:180,y:266,w:600,fs:17,ta:'center'},
+      cta:{x:380,y:340,w:200,h:54}, second:{x:600,y:340,w:180,h:54,on:0}, price:{x:280,y:420,w:400,fs:15,ta:'center'},
+      badge:{x:230,y:450,w:500,fs:15,ta:'center'}, feat1:{x:40,y:500,w:270,fs:15}, feat2:{x:345,y:500,w:270,fs:15}, feat3:{x:650,y:500,w:270,fs:15} },
+    flawed: { image:{x:280,y:170,w:400,h:170}, headline:{x:120,y:210,w:720,fs:34,ta:'center'}, support:{x:180,y:140,w:600,fs:13,ta:'center'},
+      cta:{x:640,y:440,w:160,h:36}, second:{x:330,y:410,w:300,h:60,on:1}, price:{x:40,y:110,w:300,fs:15},
+      badge:{x:230,y:380,w:500,fs:15,ta:'center'}, feat1:{x:40,y:500,w:270,fs:15}, feat2:{x:345,y:550,w:270,fs:13}, feat3:{x:650,y:500,w:270,fs:15} },
+  },
 };
-const EXTRA_FLAWED = {
-  educational: { badge:{x:600,y:380,w:340,fs:15} },
-  product: { rating:{x:700,y:380,w:240,fs:15} },
-  business: { email:{x:500,y:420,w:180,h:40} },
+const build = (lay, btn) => {
+  const d = structuredClone(HEADER);
+  for (const [id, v] of Object.entries(structuredClone(lay))) d[id] = { on:1, ...v };
+  d.cta.bg = btn;
+  return d;
 };
-
-function defaults(hue) {
-  const btn = THEME[page].btn;
-  const d = {
-    logo:{x:40,y:24,w:200,fs:20,on:1}, nav:{x:560,y:26,w:360,fs:15,on:1},
-    headline:{x:40,y:110,w:520,fs:38,on:1}, support:{x:40,y:250,w:500,fs:17,on:1},
-    cta:{x:40,y:330,w:220,h:54,bg:btn,on:1}, second:{x:280,y:330,w:180,h:54,on:0},
-    price:{x:40,y:405,w:420,fs:15,on:1}, image:{x:600,y:110,w:320,h:260,on:1},
-    feat1:{x:40,y:510,w:270,fs:15,on:1}, feat2:{x:345,y:510,w:270,fs:15,on:1}, feat3:{x:650,y:510,w:270,fs:15,on:1},
-    ...structuredClone(EXTRA[page]),
-  };
-  if (page === 'business') d.cta.x = 340;  // button sits next to the email field
-  return d;
-}
-// The study starting point: a page with clear problems for participants to fix.
-function flawed(hue) {
-  const d = defaults(hue);
-  Object.assign(d.headline, { x:40, y:300, w:860, fs:24 });
-  Object.assign(d.support, { x:540, y:120, w:300, fs:13 });
-  Object.assign(d.cta, { x:700, y:420, w:120, h:40, bg:THEME[page].flawBtn });
-  Object.assign(d.second, { x:40, y:400, w:260, h:60, on:1 });
-  Object.assign(d.price, { x:40, y:120, w:300, fs:13 });
-  Object.assign(d.image, { x:360, y:180, w:400, h:260 });
-  Object.assign(d.feat1, { y:500 }); Object.assign(d.feat2, { y:560 }); Object.assign(d.feat3, { y:520, fs:13 });
-  for (const [id, v] of Object.entries(EXTRA_FLAWED[page])) Object.assign(d[id], v);
-  return d;
-}
-let page = 'business', L = flawed(PAGES[page].hue), sel = null;
+function defaults() { return build(LAYOUT[page].good, THEME[page].btn); }
+function flawed() { return build(LAYOUT[page].flawed, THEME[page].flawBtn); }
+let page = 'business', L = flawed(), sel = null;
 let mode = 'fix', flags = new Set(), reasons = {}, locked = false, M = {};
 // Rubric points when the page loaded. Part 2 damage = items that fell by DAMAGE_DROP or more from here.
 // ponytail: a fixed 3-point drop separates damage from small trade-offs; a big trade-off still counts.
@@ -206,15 +208,36 @@ const DAMAGE_DROP = 3;
 // ponytail: one click on the main button finds both P1 and P7; add a "what is wrong" picker if that is too generous.
 // Nav links are a real trade-off (Comprehension wants them, Conversion does not), so flagging them is neither found nor a false alarm.
 const NEUTRAL = ['nav'];
-const PROBLEMS = [
-  { id:'P1', critic:'Conversion', text:'Main button is small and low in the hero', targets:['cta'], fixed:() => M.ctaPct >= 1.5 && M.ctaPct <= 5 && M.ctaY >= 100 && M.ctaY <= 340 },
-  { id:'P2', critic:'Conversion', text:'Second button is bigger than the main button', targets:['second'], fixed:() => M.dom >= 1.5 },
-  { id:'P3', critic:'Comprehension', text:'Price is far from the button', targets:['price'], fixed:() => M.priceGap <= 60 },
-  { id:'P4', critic:'Comprehension', text:'Headline is small and some body text is under 15px', targets:['headline', 'support', 'feat3'], fixed:() => M.headRatio >= 1.6 && M.bodyMin >= 15 },
-  { id:'P5', critic:'Visual', text:'Image covers the text', targets:['image'], fixed:() => M.overlapPct < 0.1 },
-  { id:'P6', critic:'Visual', text:'Feature row is not aligned', targets:['feat1', 'feat2', 'feat3'], fixed:() => M.featSpread === 0 },
-  { id:'P7', critic:'Accessibility', text:'Pale button fails 3:1 contrast', targets:['cta'], fixed:() => M.btnVsPage >= 3 },
+// Parallel forms: every page tests the same 7 rules with the same `fixed` check,
+// but each page shows the problem in a different place, so the pages do not look alike.
+const RULES = [
+  { id:'P1', critic:'Conversion', fixed:() => M.ctaPct >= 1.5 && M.ctaPct <= 5 && M.ctaY >= 100 && M.ctaY <= 340 },
+  { id:'P2', critic:'Conversion', fixed:() => M.dom >= 1.5 },
+  { id:'P3', critic:'Comprehension', fixed:() => M.priceGap <= 60 },
+  { id:'P4', critic:'Comprehension', fixed:() => M.headRatio >= 1.6 && M.bodyMin >= 15 },
+  { id:'P5', critic:'Visual', fixed:() => M.overlapPct < 0.1 },
+  { id:'P6', critic:'Visual', fixed:() => M.featSpread === 0 },
+  { id:'P7', critic:'Accessibility', fixed:() => M.btnVsPage >= 3 },
 ];
+const KEY = {
+  business: {
+    P1:['Main button is small and low in the hero', ['cta']], P2:['"Book a demo" is bigger than the main button', ['second']],
+    P3:['Price is at the top, far from the button', ['price']], P4:['Headline is small and support text is 13px', ['headline', 'support', 'feat3']],
+    P5:['Image covers the headline', ['image']], P6:['Feature row is not aligned', ['feat1', 'feat2', 'feat3']],
+    P7:['Pale button fails 3:1 contrast', ['cta']] },
+  product: {
+    P1:['Main button is small, in the bottom corner', ['cta']], P2:['"Compare models" is bigger than "Buy Aero"', ['second']],
+    P3:['Price sits on the image, far from the button', ['price']], P4:['Headline is barely bigger than the body text', ['headline']],
+    P5:['Product image runs under the text column', ['image', 'rating', 'headline']], P6:['Features step down like stairs', ['feat1', 'feat2', 'feat3']],
+    P7:['Dark button almost disappears on the dark page', ['cta']] },
+  educational: {
+    P1:['Main button is small, below the second button', ['cta']], P2:['"See the syllabus" is bigger than the main button', ['second']],
+    P3:['Price is in the top corner, far from the button', ['price']], P4:['Support text and one feature are 13px', ['support', 'feat2']],
+    P5:['Illustration covers the headline', ['image', 'headline']], P6:['Middle feature drops below the others', ['feat1', 'feat2', 'feat3']],
+    P7:['Pale button fails 3:1 contrast', ['cta']] },
+};
+let PROBLEMS = [];
+const loadKey = () => PROBLEMS = RULES.map(r => ({ ...r, text:KEY[page][r.id][0], targets:KEY[page][r.id][1] }));
 
 function testPanel() {
   const targets = new Set(PROBLEMS.flatMap(p => p.targets));
@@ -257,14 +280,14 @@ const labelFor = bg => ratio(rgb(bg), [255, 255, 255]) >= ratio(rgb(bg), [17, 17
 
 function place(el, id) {
   const m = L[id];
-  Object.assign(el.style, { left:m.x + 'px', top:m.y + 'px', width:m.w + 'px' });
+  Object.assign(el.style, { left:m.x + 'px', top:m.y + 'px', width:m.w + 'px', textAlign:m.ta || '' });
   if (TYPE[id] === 'text') el.style.fontSize = m.fs + 'px';
   else { el.style.height = m.h + 'px'; }
   if (TYPE[id] === 'button') el.style.fontSize = Math.round(Math.min(m.h * 0.36, m.w / 9)) + 'px';
 }
 
 function render() {
-  const hue = PAGES[page].hue, T = THEME[page];
+  const T = THEME[page]; loadKey(); canvas.dataset.page = page;
   for (const [k, v] of Object.entries({ '--page-bg':T.bg, '--page-fg':T.fg, '--muted-fg':T.muted, '--dot':T.dot, '--radius':T.radius,
     '--head-font':T.head, '--head-weight':T.headWeight, '--head-spacing':T.headSpacing || '0', '--body-font':T.body, '--ui-font':T.ui })) canvas.style.setProperty(k, v);
   canvas.innerHTML = Object.entries(SECTIONS).map(([n, [t, b]]) =>
@@ -343,7 +366,7 @@ canvas.addEventListener('pointerdown', e => {
   addEventListener('pointermove', move); addEventListener('pointerup', up);
 });
 document.addEventListener('click', e => {
-  if (e.target.dataset.page) { page = e.target.dataset.page; L = flawed(PAGES[page].hue); sel = null; flags.clear(); reasons = {}; locked = false; base = null; render(); }
+  if (e.target.dataset.page) { page = e.target.dataset.page; L = flawed(); sel = null; flags.clear(); reasons = {}; locked = false; base = null; render(); }
   if (e.target.dataset.mode) {
     if (e.target.dataset.mode === 'find' && locked) return alert('Part 1 is finished. Flags are locked.');
     if (e.target.dataset.mode === 'fix' && mode === 'find' && flags.size) locked = true;
@@ -353,7 +376,7 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
   if ((e.key === 'Delete' || e.key === 'Backspace') && sel && e.target.tagName !== 'INPUT') { L[sel].on = 0; sel = null; render(); }
 });
-document.getElementById('reset').onclick = () => { L = flawed(PAGES[page].hue); sel = null; flags.clear(); reasons = {}; locked = false; base = null; render(); };
+document.getElementById('reset').onclick = () => { L = flawed(); sel = null; flags.clear(); reasons = {}; locked = false; base = null; render(); };
 // The researcher view is reached only by keyboard, so a participant has no visible way to the scores.
 const drop = document.getElementById('drop');
 document.getElementById('menuBtn').onclick = () => drop.classList.toggle('open');
@@ -364,7 +387,7 @@ rubricBtn.onclick = () => { document.body.classList.toggle('participant'); syncR
 // composedPath is fixed when the click starts, so it still works after render() replaces the clicked button.
 document.addEventListener('click', e => { if (!e.composedPath().includes(drop.parentElement)) drop.classList.remove('open'); });
 document.addEventListener('keydown', e => { if (e.shiftKey && e.key === 'R') { document.body.classList.toggle('participant'); syncRubricBtn(); } });
-document.getElementById('good').onclick = () => { L = defaults(PAGES[page].hue); sel = null; base = null; render(); };
+document.getElementById('good').onclick = () => { L = defaults(); sel = null; base = null; render(); };
 
 // ---- grading ----
 function boxes() {
@@ -379,9 +402,14 @@ function grade() {
   const above = ids.filter(id => B[id].y < FOLD);
   const area = b => b.w * b.h;
 
-  // alignment points: distinct left edges (Ngo et al. simplicity measure), 6px tolerance
-  const lefts = [];
-  above.map(id => B[id].x).sort((a, b) => a - b).forEach(x => { if (!lefts.length || x - lefts[lefts.length - 1] > 6) lefts.push(x); });
+  // alignment groups (after Ngo et al. simplicity): an element joins a group when its left, center or right edge
+  // is within 6px of an edge already in it, so left-aligned and centered layouts are judged alike
+  const edges = [], lefts = [];
+  for (const id of [...above].sort((a, b) => B[a].x - B[b].x)) {
+    const b = B[id], e = [b.x, b.x + b.w / 2, b.x + b.w];
+    if (!edges.some(l => e.some(v => Math.abs(v - l) <= 6))) lefts.push(b.x);
+    edges.push(...e);
+  }
   // balance (Ngo, Teo & Byrne 2000): weight = area x distance from the center axis
   let wl = 0, wr = 0, wt = 0, wb = 0;
   for (const id of above) { const b = B[id], cx = b.x + b.w / 2, cy = b.y + b.h / 2, a = area(b);
@@ -453,7 +481,7 @@ function grade() {
     ],
     'Visual organization': [
       ['Overlap', overlapPct.toFixed(1) + '% of page', range(overlapPct, 0, 0, 3)],
-      ['Alignment points (left edges)', lefts.length, range(lefts.length, 1, 3, 4)],
+      ['Alignment groups (left, center or right edge)', lefts.length, range(lefts.length, 1, 3, 4)],
       ['Balance (Ngo)', bal.toFixed(2), range(bal, 0.8, 1, 0.4)],
       ['White space', white.toFixed(0) + '%', range(white, 35, 60, 20)],
       ['Headline–text grouping', headSupGap === 999 ? 'missing' : headSupGap.toFixed(0) + 'px gap', range(headSupGap, 8, 40, 60)],
